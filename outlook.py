@@ -41,7 +41,7 @@ class Outlook(webdriver.Chrome):
                 (By.ID, 'idBtn_Back'))).click()
             WebDriverWait(self, 6).until(expected_condition.element_to_be_clickable(
                 (By.ID, 'iCancel'))).click()
-        WebDriverWait(self, 25).until(expected_condition.visibility_of_element_located(
+        WebDriverWait(self, 30).until(expected_condition.visibility_of_element_located(
             (By.ID, '1-panel')))
         code = self.__wait_for_code(delay)
 
@@ -50,10 +50,3 @@ class Outlook(webdriver.Chrome):
 
         self.close()
         return code
-
-
-# if __name__ == '__main__':
-#     outlook = Outlook()
-#     ver_code = outlook.get_code('leon.bullock.462665@outlook.com',
-#                      '6c656f6e2e62756c6c6f636b2e343632363635406f75746c6f6f6b2e636f6d:Tek01sdsa12x@', 5)
-#     print(ver_code)

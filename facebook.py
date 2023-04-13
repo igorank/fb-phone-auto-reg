@@ -1,7 +1,23 @@
 import pathlib
 import time
 import random
+import cv2
 from config import Config
+
+
+def get_accept_rules_coords() -> str:
+    screenshot = cv2.imread("screencap.png", 0)
+    template = cv2.imread("template.png", 0)
+
+    h, w = template.shape
+
+    res = cv2.matchTemplate(screenshot, template, cv2.TM_SQDIFF)
+
+    # threshold  = 0.1
+    # loc = np.where (res >= threshold)
+    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+
+    return str(int(min_loc[0] + (w / 2))) + " " + str(int(min_loc[1] + (h / 2)))
 
 
 class Facebook:
@@ -58,7 +74,7 @@ class Facebook:
         self.__device.shell(f'input tap {self.__config.get_coords("next5")}')
         time.sleep(1)
         self.__device.shell(f'input tap {self.__config.get_coords("not_save_pass")}')
-        time.sleep(1)
+        time.sleep(2)
 
     def __swipe_year(self):
         for _ in range(random.randint(3, 5)):
@@ -85,7 +101,9 @@ class Facebook:
         self.__select_gender(profile_data['gender'])
         self.__enter_email(email_data[0])
         self.__set_password(profile_data['password'])
-        self.__device.shell(f'input tap {self.__config.get_coords("accept_rules")}')
+        self.take_screenshot()
+        accept_rules_coords = get_accept_rules_coords()
+        self.__device.shell(f'input tap {accept_rules_coords}')  # TEMP
         time.sleep(40)
 
     def take_screenshot(self):

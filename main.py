@@ -1,6 +1,7 @@
-import cv2
+import sys
 import time
 import random
+import cv2
 import numpy as np
 from ppadb.client import Client as AdbClient
 from password_generator import PasswordGenerator
@@ -24,16 +25,16 @@ def check_connection(clnt):
 
 def get_filesdata(filename, use_emails=False):
     if use_emails:
-        with open(filename) as file:
-            lines = file.read().splitlines()
+        with open(filename) as o_file:
+            lines = o_file.read().splitlines()
     else:
-        with open(filename, encoding='utf-8') as file:
-            lines = file.read().splitlines()
+        with open(filename, encoding='utf-8') as o_file:
+            lines = o_file.read().splitlines()
     return lines
 
 
 def load_data() -> dict:
-    if random.uniform(0, 1) == 0:
+    if random.randint(0, 1) == 0:
         names = get_filesdata('names\\names_lat.txt')
         surnames = get_filesdata('names\\surnames_lat.txt')
         gender = 0
@@ -64,7 +65,7 @@ def compare_images(image1: str, image2: str) -> float:
     img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
     img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
-    error, diff = comp_mse(img1, img2)
+    error, _ = comp_mse(img1, img2)
     print("Image matching Error between the two images:", error)
     return error
 
@@ -97,16 +98,52 @@ def get_fb_code(delay: int) -> str:
     return outlook_reader.get_code(email_data[0], email_data[2], delay)
 
 
+def check_registration() -> None:
+    if img_match < 5:
+        print('Success')
+        code = get_fb_code(300)  # TEMP "Code did not come"
+        if code == "Code did not come":
+            return
+        print(code)
+        fb.input_code(code)
+        time.sleep(18)
+
+        check_verification()
+
+
+def check_verification() -> None:
+    fb.take_screenshot()
+    ver_match = compare_images('screencap.png', 'data\\succ_ver.png')
+    if ver_match < 5:
+        print('Profile verified')
+        with open("accounts.txt", "a") as file:
+            file.write(str(email_data[0]) + ";" + str(password) + ";" + str(email_data[2]) + ";\n")
+
+
+def get_answer():
+    try:
+        value = int(input('How many iterations to make?\n'))
+    except ValueError:
+        print("Sorry, I didn't understand that.")
+        return None
+    if value <= 0:
+        print("Sorry, your response must not be negative or equal to 0.")
+        return None
+    return value
+
+
 if __name__ == '__main__':
     config = Config()
     client = AdbClient(host="127.0.0.1", port=5037)  # Default is "127.0.0.1" and 5037
 
     device = check_connection(client)
     if device is None:
-        quit()
+        sys.exit()
 
-    for _ in range(2):
-        file_data = load_data() # TEMP
+    number_of_profiles = get_answer()
+
+    for _ in range(number_of_profiles):
+        file_data = load_data()  # TEMP
         name = random.choice(file_data['names'])
         surname = random.choice(file_data['surnames'])
         rand_email = random.choice(file_data['emails'])
@@ -121,18 +158,8 @@ if __name__ == '__main__':
 
         fb.take_screenshot()
         img_match = compare_images('screencap.png', 'data\\succ_reg.png')
-        if img_match < 5:
-            print('Success')
-            code = get_fb_code(300) # TEMP "Code did not come"
-            print(code)
-            fb.input_code(code)
-            time.sleep(18)
 
-            fb.take_screenshot()
-            ver_match = compare_images('screencap.png', 'data\\succ_ver.png')
-            if ver_match < 5:
-                print('Profile verified')
-                with open("accounts.txt", "a") as file:
-                    file.write(str(email_data[0]) + ";" + str(password) + ";" + str(email_data[2]) + ";\n")
+        check_registration()
+
         fb.clear_cache()
         fb.change_ip()
