@@ -1,23 +1,8 @@
 import pathlib
 import time
 import random
-import cv2
+import vision
 from config import Config
-
-
-def get_accept_rules_coords() -> str:
-    screenshot = cv2.imread("screencap.png", 0)
-    template = cv2.imread("template.png", 0)
-
-    h, w = template.shape
-
-    res = cv2.matchTemplate(screenshot, template, cv2.TM_SQDIFF)
-
-    # threshold  = 0.1
-    # loc = np.where (res >= threshold)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-
-    return str(int(min_loc[0] + (w / 2))) + " " + str(int(min_loc[1] + (h / 2)))
 
 
 class Facebook:
@@ -25,12 +10,16 @@ class Facebook:
     def __init__(self, device):
         self.__device = device
         self.__config = Config()
+
         self.__device.shell(f'input tap {self.__config.get_coords("facebook_app")}')
         time.sleep(6)
-        self.__device.shell(f'input tap {self.__config.get_coords("create_acc")}')
-        time.sleep(3)
-        self.__device.shell(f'input tap {self.__config.get_coords("start")}')
-        time.sleep(3)
+        self.take_screenshot()
+
+    @staticmethod
+    def check_init() -> bool:
+        if vision.compare_images('screencap.png', 'data\\init.png') < 5:
+            return True
+        return False
 
     def __fill_names(self, name, surname):
         self.__device.shell(f'input tap {self.__config.get_coords("name_field")}')
@@ -67,14 +56,16 @@ class Facebook:
         time.sleep(1)
         self.__device.shell(f'input text {email}')
         self.__device.shell(f'input tap {self.__config.get_coords("next4")}')
-        time.sleep(1)
+        time.sleep(2)
 
     def __set_password(self, password):
         self.__device.shell(f'input text {password}')
         self.__device.shell(f'input tap {self.__config.get_coords("next5")}')
-        time.sleep(1)
-        self.__device.shell(f'input tap {self.__config.get_coords("not_save_pass")}')
         time.sleep(2)
+        self.take_screenshot()
+        if vision.compare_images('screencap.png', 'data\\save_pass.png') < 5:
+            self.__device.shell(f'input tap {self.__config.get_coords("not_save_pass")}')  # не всегда всплывает
+        time.sleep(2)  # default = 2
 
     def __swipe_year(self):
         for _ in range(random.randint(3, 5)):
@@ -96,13 +87,18 @@ class Facebook:
         self.__device.shell(f'input tap {self.__config.get_coords("next6")}')
 
     def register(self, profile_data, email_data):
+        self.__device.shell(f'input tap {self.__config.get_coords("create_acc")}')
+        time.sleep(3)
+        self.__device.shell(f'input tap {self.__config.get_coords("start")}')
+        time.sleep(3)
+
         self.__fill_names(profile_data['name'], profile_data['surname'])
         self.__fill_date()
         self.__select_gender(profile_data['gender'])
         self.__enter_email(email_data[0])
         self.__set_password(profile_data['password'])
         self.take_screenshot()
-        accept_rules_coords = get_accept_rules_coords()
+        accept_rules_coords = vision.get_accept_rules_coords()
         self.__device.shell(f'input tap {accept_rules_coords}')  # TEMP
         time.sleep(40)
 

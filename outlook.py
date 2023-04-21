@@ -8,7 +8,10 @@ from selenium.webdriver.support import expected_conditions as expected_condition
 
 class Outlook(webdriver.Chrome):
 
-    def __int__(self) -> None:
+    def __init__(self) -> None:
+        # self.__options = webdriver.ChromeOptions()
+        # self.__options.add_argument("--headless=new")
+        # super().__init__(options=self.__options)
         super().__init__()
 
     def __wait_for_code(self, delay: int) -> str:
@@ -41,7 +44,7 @@ class Outlook(webdriver.Chrome):
                 (By.ID, 'idBtn_Back'))).click()
             WebDriverWait(self, 6).until(expected_condition.element_to_be_clickable(
                 (By.ID, 'iCancel'))).click()
-        WebDriverWait(self, 30).until(expected_condition.visibility_of_element_located(
+        WebDriverWait(self, 40).until(expected_condition.visibility_of_element_located(
             (By.ID, '1-panel')))
         code = self.__wait_for_code(delay)
 

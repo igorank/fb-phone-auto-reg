@@ -1,9 +1,9 @@
 import sys
 import time
 import random
-import cv2
-import numpy as np
+import vision
 from ppadb.client import Client as AdbClient
+from selenium.common.exceptions import TimeoutException
 from password_generator import PasswordGenerator
 from facebook import Facebook
 from imapreader import EmailReader
@@ -33,6 +33,16 @@ def get_filesdata(filename, use_emails=False):
     return lines
 
 
+def remove_line_by_text(filename: str, text: str) -> None:
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+
+    with open(filename, 'w') as file_w:
+        for line in lines:
+            if line.find(text) == -1:
+                file_w.write(line)
+
+
 def load_data() -> dict:
     if random.randint(0, 1) == 0:
         names = get_filesdata('names\\names_lat.txt')
@@ -47,35 +57,14 @@ def load_data() -> dict:
             'gender': gender, 'emails': emails}
 
 
-# define the function to compute MSE between two images
-def comp_mse(img1, img2):
-    h, w = img1.shape
-    diff = cv2.subtract(img1, img2)
-    err = np.sum(diff ** 2)
-    mse = err / (float(h * w))
-    return mse, diff
-
-
-def compare_images(image1: str, image2: str) -> float:
-    # load the input images
-    img1 = cv2.imread(image1)
-    img2 = cv2.imread(image2)
-
-    # convert the images to grayscale
-    img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-    img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-
-    error, _ = comp_mse(img1, img2)
-    print("Image matching Error between the two images:", error)
-    return error
-
-
 def get_email_data(random_email: str) -> tuple:
     email = random_email.split(';')[0]
     email_domain = email.split('@')[1]
     if email_domain == "inbox.lv":
-        return email, 'mail.inbox.lv', rand_email.split(';')[2]
-    return email, 'outlook.office365.com', rand_email.split(';')[1]
+        return email, 'mail.inbox.lv', \
+            rand_email.split(';')[2], rand_email.split(';')[1]
+    return email, 'outlook.office365.com', \
+        rand_email.split(';')[1], rand_email.split(';')[1]
 
 
 def generate_password() -> str:
@@ -86,7 +75,7 @@ def generate_password() -> str:
     pwo.minlchars = 3  # (Optional)
     pwo.minnumbers = 1  # (Optional)
     pwo.minschars = 0  # (Optional)
-    pwo.excludeschars = "!$%^=<>&,()+-*?/"
+    pwo.excludeschars = "!$%^=<>&,()+-*?/;"
     return pwo.generate()
 
 
@@ -95,29 +84,45 @@ def get_fb_code(delay: int) -> str:
         mail_reader = EmailReader(email_data[1], email_data[0], email_data[2])
         return mail_reader.get_facebook_code(delay)
     outlook_reader = Outlook()
-    return outlook_reader.get_code(email_data[0], email_data[2], delay)
+    try:
+        return outlook_reader.get_code(email_data[0], email_data[2], delay)
+    except TimeoutException:
+        print("BINGO")
+        time.sleep(99999)  # TEMP
+        return "Timeout"
 
 
-def check_registration() -> None:
-    if img_match < 5:
+def check_registration(comp_result: bool) -> None:
+    if comp_result:  # default = 5
         print('Success')
-        code = get_fb_code(300)  # TEMP "Code did not come"
-        if code == "Code did not come":
-            return
+        code = get_fb_code(300)
         print(code)
+        if code in {"Code did not come", "Timeout"}:
+            return
         fb.input_code(code)
-        time.sleep(18)
+        time.sleep(22)
 
         check_verification()
 
 
+def compare(dest: list, source='screencap.png') -> bool:
+    for i in dest:
+        if vision.compare_images(source, i) < 5:
+            return True
+    return False
+
+
 def check_verification() -> None:
     fb.take_screenshot()
-    ver_match = compare_images('screencap.png', 'data\\succ_ver.png')
-    if ver_match < 5:
+    succ_ver_list = ['data\\succ_ver.png', 'data\\succ_ver2.png',
+                     'data\\succ_ver3.png', 'data\\succ_ver4.png',
+                     'data\\succ_ver5.png']
+    if compare(succ_ver_list):
         print('Profile verified')
         with open("accounts.txt", "a") as file:
-            file.write(str(email_data[0]) + ";" + str(password) + ";" + str(email_data[2]) + ";\n")
+            file.write(str(email_data[0]) + ";" + str(password) + ";" + str(email_data[3]) + ";\n")
+        remove_line_by_text('emails.txt',
+                            str(email_data[0]))  # удаляем почту из txt файла
 
 
 def get_answer():
@@ -148,18 +153,19 @@ if __name__ == '__main__':
         surname = random.choice(file_data['surnames'])
         rand_email = random.choice(file_data['emails'])
         password = generate_password()
+        print(password)  # TEMP
 
         profile_data = {'name': name, 'surname': surname,
                         'password': password, 'gender': file_data['gender']}
         email_data = get_email_data(rand_email)
 
         fb = Facebook(device)
-        fb.register(profile_data, email_data)
-
-        fb.take_screenshot()
-        img_match = compare_images('screencap.png', 'data\\succ_reg.png')
-
-        check_registration()
+        if fb.check_init():
+            fb.register(profile_data, email_data)
+            fb.take_screenshot()
+            succ_reg_list = ['data\\succ_reg.png', 'data\\succ_reg2.png']
+            res = compare(succ_reg_list)
+            check_registration(res)
 
         fb.clear_cache()
         fb.change_ip()
