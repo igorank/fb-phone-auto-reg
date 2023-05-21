@@ -28,10 +28,12 @@ class Outlook(webdriver.Chrome):
         self.find_element(By.ID, 'i0116').send_keys(email)
         WebDriverWait(self, 6).until(expected_condition.element_to_be_clickable(
             (By.ID, 'idSIButton9'))).click()
-        self.find_element(By.ID, 'i0118').send_keys(password)
+        WebDriverWait(self, 6).until(expected_condition.element_to_be_clickable(
+            (By.ID, 'i0118'))).send_keys(password)
+        # self.find_element(By.ID, 'i0118').send_keys(password)
         WebDriverWait(self, 6).until(expected_condition.element_to_be_clickable(
             (By.ID, 'idA_PWD_ForgotPassword')))
-        self.find_element(By.ID, 'idSIButton9').click()
+        self.find_element(By.ID, 'idSIButton9').click() # BUG
 
         try:
             WebDriverWait(self, 6).until(expected_condition.element_to_be_clickable(

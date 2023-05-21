@@ -23,21 +23,17 @@ def check_connection(clnt):
     return _device
 
 
-def get_filesdata(filename, use_emails=False):
-    if use_emails:
-        with open(filename) as o_file:
-            lines = o_file.read().splitlines()
-    else:
-        with open(filename, encoding='utf-8') as o_file:
-            lines = o_file.read().splitlines()
+def get_filesdata(filename):
+    with open(filename, encoding='utf-8') as o_file:
+        lines = o_file.read().splitlines()
     return lines
 
 
 def remove_line_by_text(filename: str, text: str) -> None:
-    with open(filename, 'r') as file:
+    with open(filename, 'r', encoding='utf-8') as file:
         lines = file.readlines()
 
-    with open(filename, 'w') as file_w:
+    with open(filename, 'w', encoding='utf-8') as file_w:
         for line in lines:
             if line.find(text) == -1:
                 file_w.write(line)
@@ -52,7 +48,7 @@ def load_data() -> dict:
         names = get_filesdata('names\\names_m_lat.txt')
         surnames = get_filesdata('names\\surnames_m_lat.txt')
         gender = 1
-    emails = get_filesdata('emails.txt', True)
+    emails = get_filesdata('emails.txt')
     return {'names': names, 'surnames': surnames,
             'gender': gender, 'emails': emails}
 
@@ -75,7 +71,7 @@ def generate_password() -> str:
     pwo.minlchars = 3  # (Optional)
     pwo.minnumbers = 1  # (Optional)
     pwo.minschars = 0  # (Optional)
-    pwo.excludeschars = "!$%^=<>&,()+-*?/;"
+    pwo.excludeschars = "!#$%^=<>&,()+-*?/;"
     return pwo.generate()
 
 
@@ -100,7 +96,7 @@ def check_registration(comp_result: bool) -> None:
         if code in {"Code did not come", "Timeout"}:
             return
         fb.input_code(code)
-        time.sleep(22)
+        # time.sleep(22)
 
         check_verification()
 
@@ -112,18 +108,31 @@ def compare(dest: list, source='screencap.png') -> bool:
     return False
 
 
-def check_verification() -> None:
-    fb.take_screenshot()
+def check_verification(timeout: int = 22) -> bool:
+    # fb.take_screenshot()
+    start = time.time()
+    elapsed_time = 0
+
     succ_ver_list = ['data\\succ_ver.png', 'data\\succ_ver2.png',
                      'data\\succ_ver3.png', 'data\\succ_ver4.png',
-                     'data\\succ_ver5.png']
-    if compare(succ_ver_list):
-        print('Profile verified')
-        with open("accounts.txt", "a") as file:
-            file.write(str(email_data[0]) + ";" + str(password) + ";" + str(email_data[3]) + ";\n")
-        remove_line_by_text('emails.txt',
-                            str(email_data[0]))  # удаляем почту из txt файла
+                     'data\\succ_ver5.png', 'data\\succ_ver6.png']
 
+    while elapsed_time <= timeout:
+        fb.take_screenshot()
+
+        if compare(succ_ver_list):
+            print('Profile verified')
+            with open("accounts.txt", "a") as file:
+                file.write(str(email_data[0]) + ";" + str(password) + ";" + str(email_data[3]) + ";\n")
+            remove_line_by_text('emails.txt',
+                                str(email_data[0]))  # удаляем почту из txt файла
+            return True
+
+        end = time.time()
+        elapsed_time = end - start
+        print(elapsed_time)  # TEMP
+
+    return False
 
 def get_answer():
     try:
@@ -153,7 +162,6 @@ if __name__ == '__main__':
         surname = random.choice(file_data['surnames'])
         rand_email = random.choice(file_data['emails'])
         password = generate_password()
-        print(password)  # TEMP
 
         profile_data = {'name': name, 'surname': surname,
                         'password': password, 'gender': file_data['gender']}
@@ -161,11 +169,9 @@ if __name__ == '__main__':
 
         fb = Facebook(device)
         if fb.check_init():
-            fb.register(profile_data, email_data)
-            fb.take_screenshot()
-            succ_reg_list = ['data\\succ_reg.png', 'data\\succ_reg2.png']
-            res = compare(succ_reg_list)
-            check_registration(res)
+            if fb.register(profile_data, email_data):
+                res = fb.check_checkpoint()
+                check_registration(res)
 
         fb.clear_cache()
         fb.change_ip()
