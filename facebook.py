@@ -3,6 +3,7 @@ import time
 import random
 import vision
 from config import Config
+from helper import remove_line_by_text
 
 
 class Facebook:
@@ -10,23 +11,33 @@ class Facebook:
     def __init__(self, device):
         self.__device = device
         self.__config = Config()
-
         self.__device.shell(f'input tap {self.__config.get_coords("facebook_app")}')
-        time.sleep(6)
-        self.take_screenshot()
 
-    @staticmethod
-    def check_init() -> bool:
-        if vision.compare_images('screencap.png', 'data\\init.png') < 5:
-            return True
+    def check_init(self, timeout: int = 12) -> bool:
+        start = time.time()
+        elapsed_time = 0
+        iterator = 0
+
+        succ_init = 'data\\init.png'
+
+        while elapsed_time <= timeout or iterator < 2:
+            self.take_screenshot()
+            if vision.compare_images('screencap.png', succ_init) < 5:
+                return True
+
+            end = time.time()
+            elapsed_time = end - start
+            iterator += 1
+            # print(elapsed_time) # TEMP
+
         return False
 
-    def check_checkpoint(self, timeout: int = 40) -> bool:
+    def check_checkpoint(self, email_data: tuple, timeout: int = 40) -> bool:
         start = time.time()
         elapsed_time = 0
 
         succ_reg_list = ['data\\succ_reg.png', 'data\\succ_reg2.png',
-                         'data\\succ_reg3.png', 'data\\succ_reg4.png']
+                         'data\\succ_reg3.png', 'data\\succ_reg4.png', 'data\\succ_reg5.png']
         fail_reg_list = ['data\\checkpoint.png']
 
         while elapsed_time <= timeout:
@@ -38,6 +49,9 @@ class Facebook:
 
             for i in fail_reg_list:
                 if vision.compare_images('screencap.png', i) < 5:
+                    remove_line_by_text('emails.txt',
+                                        str(email_data[0]))  # удаляем почту из txt файла
+                    print("Checkpoint")
                     return False
 
             end = time.time()
@@ -57,13 +71,13 @@ class Facebook:
 
     def __tap_birth_date_coords(self) -> bool:
         self.take_screenshot()
-        images = ["birth_date.png", "birth_date2.png", "birth_date3.png"]
+        images = ["birth_date.png", "birth_date2.png", "birth_date3.png", "birth_date4.png"]
         for image in images:
             if vision.is_template_in_image('screencap.png', image):
                 if image == "birth_date3.png":
                     return True
                 birth_date_coords = vision.get_coords(image)
-                print("Birth date coordinates: " + birth_date_coords)  # TEMP
+                # print("Birth date coordinates: " + birth_date_coords)  # TEMP
                 self.__device.shell(f'input tap {birth_date_coords}')
                 return True
         print("Can not find birth date coordinates")
@@ -77,9 +91,9 @@ class Facebook:
             self.__swipe_day()
             self.__device.shell(f'input tap {self.__config.get_coords("set_date")}')
             time.sleep(0.5)
-            self.take_screenshot()
-            next_butt_coords = vision.get_coords("next_button.png")
-            self.__device.shell(f'input tap {next_butt_coords}')
+            # self.take_screenshot()
+            # next_butt_coords = vision.get_coords("next_button.png") # заменить на корд.
+            self.__device.shell(f'input tap {self.__config.get_coords("next_date_window")}')
             time.sleep(2)
             return True
         return False
@@ -126,6 +140,11 @@ class Facebook:
             self.__device.shell(f'input swipe 330 1200 330 {str(random.randint(1712, 2012))} 500')
             time.sleep(0.5)
 
+    def resend_code(self):
+        codenotcome_butt = vision.get_coords("codedidntcome.png")   # заменить на корд.
+        self.__device.shell(f'input tap {codenotcome_butt}')
+        self.__device.shell(f'input tap {self.__config.get_coords("resend_code")}')
+
     def input_code(self, code):
         self.__device.shell(f'input text {code}')
         next_butt_coords = vision.get_coords("next_button.png")
@@ -137,6 +156,8 @@ class Facebook:
         self.__device.shell(f'input tap {self.__config.get_coords("start")}')
         time.sleep(3)
 
+        self.__device.shell(f'input tap 300 675')   # TEMP
+        time.sleep(0.5)
         self.take_screenshot()
         if vision.compare_images('screencap.png', 'data\\whatsurname.png') < 5:
             self.__fill_names(profile_data['name'], profile_data['surname'], '2')
@@ -157,7 +178,7 @@ class Facebook:
     def take_screenshot(self):
         self.__device.shell('screencap -p /sdcard/screencap.png')
         self.__device.pull('/sdcard/screencap.png',
-                           pathlib.Path().resolve().__str__() + '//screencap.png')
+                           str(pathlib.Path().resolve()) + '//screencap.png')
 
     def clear_cache(self):
         self.__device.shell('pm clear com.facebook.katana')

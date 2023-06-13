@@ -9,9 +9,6 @@ from selenium.webdriver.support import expected_conditions as expected_condition
 class Outlook(webdriver.Chrome):
 
     def __init__(self) -> None:
-        # self.__options = webdriver.ChromeOptions()
-        # self.__options.add_argument("--headless=new")
-        # super().__init__(options=self.__options)
         super().__init__()
 
     def __wait_for_code(self, delay: int) -> str:
@@ -23,7 +20,7 @@ class Outlook(webdriver.Chrome):
             time.sleep(1)
         return "Code did not come"
 
-    def get_code(self, email: str, password: str, delay: int):
+    def login(self, email: str, password: str) -> None:
         self.get("https://go.microsoft.com/fwlink/p/?linkid=2125442&clcid=0x419&culture=ru-ru&country=ru")
         self.find_element(By.ID, 'i0116').send_keys(email)
         WebDriverWait(self, 6).until(expected_condition.element_to_be_clickable(
@@ -33,7 +30,7 @@ class Outlook(webdriver.Chrome):
         # self.find_element(By.ID, 'i0118').send_keys(password)
         WebDriverWait(self, 6).until(expected_condition.element_to_be_clickable(
             (By.ID, 'idA_PWD_ForgotPassword')))
-        self.find_element(By.ID, 'idSIButton9').click() # BUG
+        self.find_element(By.ID, 'idSIButton9').click()  # BUG
 
         try:
             WebDriverWait(self, 6).until(expected_condition.element_to_be_clickable(
@@ -48,10 +45,10 @@ class Outlook(webdriver.Chrome):
                 (By.ID, 'iCancel'))).click()
         WebDriverWait(self, 40).until(expected_condition.visibility_of_element_located(
             (By.ID, '1-panel')))
+
+    def get_facebook_code(self, delay: int) -> str:
         code = self.__wait_for_code(delay)
-
-        if not code:
+        if code == "Code did not come":
             return code
-
         self.close()
         return code

@@ -20,7 +20,7 @@ def compare_images(image1: str, image2: str) -> float:
     img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
     error, _ = comp_mse(img1, img2)
-    print("Image matching Error between the two images:", error)
+    # print("Image matching Error between the two images:", error)
     return error
 
 

@@ -9,6 +9,7 @@ from facebook import Facebook
 from imapreader import EmailReader
 from outlook import Outlook
 from config import Config
+from helper import remove_line_by_text
 
 
 def check_connection(clnt):
@@ -29,25 +30,18 @@ def get_filesdata(filename):
     return lines
 
 
-def remove_line_by_text(filename: str, text: str) -> None:
-    with open(filename, 'r', encoding='utf-8') as file:
-        lines = file.readlines()
-
-    with open(filename, 'w', encoding='utf-8') as file_w:
-        for line in lines:
-            if line.find(text) == -1:
-                file_w.write(line)
-
-
 def load_data() -> dict:
     if random.randint(0, 1) == 0:
         names = get_filesdata('names\\names_lat.txt')
         surnames = get_filesdata('names\\surnames_lat.txt')
         gender = 0
     else:
-        names = get_filesdata('names\\names_m_lat.txt')
-        surnames = get_filesdata('names\\surnames_m_lat.txt')
-        gender = 1
+        names = get_filesdata('names\\names_lat.txt')
+        surnames = get_filesdata('names\\surnames_lat.txt')
+        gender = 0
+        # names = get_filesdata('names\\names_m_lat.txt')
+        # surnames = get_filesdata('names\\surnames_m_lat.txt')
+        # gender = 1
     emails = get_filesdata('emails.txt')
     return {'names': names, 'surnames': surnames,
             'gender': gender, 'emails': emails}
@@ -75,30 +69,38 @@ def generate_password() -> str:
     return pwo.generate()
 
 
-def get_fb_code(delay: int) -> str:
-    if email_data[1] == 'mail.inbox.lv':
-        mail_reader = EmailReader(email_data[1], email_data[0], email_data[2])
-        return mail_reader.get_facebook_code(delay)
-    outlook_reader = Outlook()
+def get_fb_code(mail_obj, delay: int) -> (str or bool):
     try:
-        return outlook_reader.get_code(email_data[0], email_data[2], delay)
+        code = mail_obj.get_facebook_code(delay)
+        if code in {"Code did not come", "Timeout"}:
+            fb.resend_code()
+            return False
+        return code
     except TimeoutException:
         print("BINGO")
         time.sleep(99999)  # TEMP
         return "Timeout"
 
 
-def check_registration(comp_result: bool) -> None:
+def check_registration(comp_result: bool) -> (bool or str):
     if comp_result:  # default = 5
         print('Success')
-        code = get_fb_code(300)
-        print(code)
-        if code in {"Code did not come", "Timeout"}:
-            return
-        fb.input_code(code)
-        # time.sleep(22)
 
-        check_verification()
+        if email_data[1] == 'mail.inbox.lv':
+            mail_obj = EmailReader(email_data[1], email_data[0], email_data[2])
+        else:
+            mail_obj = Outlook()
+            mail_obj.login(email_data[0], email_data[2])
+            # if not mail_obj.login(email_data[0], email_data[2]):
+            #     remove_line_by_text('emails.txt',
+            #                         str(email_data[0]))  # удаляем почту из txt файла
+            #     print(email_data[0] + " has been banned")
+            #     return False
+
+        for _ in range(10):
+            code = get_fb_code(mail_obj, 30)
+            if code:
+                return code
 
 
 def compare(dest: list, source='screencap.png') -> bool:
@@ -130,9 +132,10 @@ def check_verification(timeout: int = 22) -> bool:
 
         end = time.time()
         elapsed_time = end - start
-        print(elapsed_time)  # TEMP
+        # print(elapsed_time)  # TEMP
 
     return False
+
 
 def get_answer():
     try:
@@ -160,7 +163,10 @@ if __name__ == '__main__':
         file_data = load_data()  # TEMP
         name = random.choice(file_data['names'])
         surname = random.choice(file_data['surnames'])
-        rand_email = random.choice(file_data['emails'])
+        try:
+            rand_email = random.choice(file_data['emails'])
+        except IndexError:  # пустой emails.txt
+            sys.exit()
         password = generate_password()
 
         profile_data = {'name': name, 'surname': surname,
@@ -170,8 +176,12 @@ if __name__ == '__main__':
         fb = Facebook(device)
         if fb.check_init():
             if fb.register(profile_data, email_data):
-                res = fb.check_checkpoint()
-                check_registration(res)
+                res = fb.check_checkpoint(email_data)
+                ver_code = check_registration(res)
+                if ver_code:
+                    print(ver_code)
+                    fb.input_code(ver_code)
+                    check_verification()
 
         fb.clear_cache()
         fb.change_ip()
