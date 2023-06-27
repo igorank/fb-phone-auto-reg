@@ -4,6 +4,7 @@ import random
 import vision
 from ppadb.client import Client as AdbClient
 from selenium.common.exceptions import TimeoutException
+from imap_tools.errors import MailboxLoginError
 from password_generator import PasswordGenerator
 from facebook import Facebook
 from imapreader import EmailReader
@@ -36,12 +37,9 @@ def load_data() -> dict:
         surnames = get_filesdata('names\\surnames_lat.txt')
         gender = 0
     else:
-        names = get_filesdata('names\\names_lat.txt')
-        surnames = get_filesdata('names\\surnames_lat.txt')
-        gender = 0
-        # names = get_filesdata('names\\names_m_lat.txt')
-        # surnames = get_filesdata('names\\surnames_m_lat.txt')
-        # gender = 1
+        names = get_filesdata('names\\names_m_lat.txt')
+        surnames = get_filesdata('names\\surnames_m_lat.txt')
+        gender = 1
     emails = get_filesdata('emails.txt')
     return {'names': names, 'surnames': surnames,
             'gender': gender, 'emails': emails}
@@ -50,11 +48,16 @@ def load_data() -> dict:
 def get_email_data(random_email: str) -> tuple:
     email = random_email.split(';')[0]
     email_domain = email.split('@')[1]
-    if email_domain == "inbox.lv":
-        return email, 'mail.inbox.lv', \
-            rand_email.split(';')[2], rand_email.split(';')[1]
-    return email, 'outlook.office365.com', \
-        rand_email.split(';')[1], rand_email.split(';')[1]
+    match email_domain:
+        case "inbox.lv":
+            return email, 'mail.inbox.lv', \
+                rand_email.split(';')[2], rand_email.split(';')[1]
+        case "outlook.com":
+            return email, 'outlook.office365.com', \
+                rand_email.split(';')[1], rand_email.split(';')[1]
+        case "rambler.ru":
+            return email, 'imap.rambler.ru', \
+                rand_email.split(';')[1], rand_email.split(';')[1]
 
 
 def generate_password() -> str:
@@ -86,8 +89,14 @@ def check_registration(comp_result: bool) -> (bool or str):
     if comp_result:  # default = 5
         print('Success')
 
-        if email_data[1] == 'mail.inbox.lv':
-            mail_obj = EmailReader(email_data[1], email_data[0], email_data[2])
+        if email_data[1] == 'mail.inbox.lv' or email_data[1] == 'imap.rambler.ru':
+            try:
+                mail_obj = EmailReader(email_data[1], email_data[0], email_data[2])
+            except MailboxLoginError:   # Invalid login or password
+                print('Invalid login or password')
+                remove_line_by_text('emails.txt',
+                                    str(email_data[0]))  # удаляем почту из txt файла
+                return False
         else:
             mail_obj = Outlook()
             mail_obj.login(email_data[0], email_data[2])
@@ -111,7 +120,6 @@ def compare(dest: list, source='screencap.png') -> bool:
 
 
 def check_verification(timeout: int = 22) -> bool:
-    # fb.take_screenshot()
     start = time.time()
     elapsed_time = 0
 
@@ -129,6 +137,11 @@ def check_verification(timeout: int = 22) -> bool:
             remove_line_by_text('emails.txt',
                                 str(email_data[0]))  # удаляем почту из txt файла
             return True
+        elif vision.compare_images('screencap.png', 'data\\not_verified.png') < 5:
+            print('Profile not verified')
+            remove_line_by_text('emails.txt',
+                                str(email_data[0]))  # удаляем почту из txt файла
+            return False
 
         end = time.time()
         elapsed_time = end - start

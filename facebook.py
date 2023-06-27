@@ -110,10 +110,15 @@ class Facebook:
     def __enter_email(self, email):
         self.__device.shell(f'input tap {self.__config.get_coords("decline")}')
         time.sleep(1)
-        self.__device.shell(f'input tap {self.__config.get_coords("use_email_butt")}')
+        self.take_screenshot()
+        email_reg_butt = vision.get_coords("email_reg.png")
+        self.__device.shell(f'input tap {email_reg_butt}')
         time.sleep(1)
         self.__device.shell(f'input text {email}')
-        self.__device.shell(f'input tap {self.__config.get_coords("next4")}')
+        self.take_screenshot()
+        next_butt = vision.get_coords("next_button.png")
+        self.__device.shell(f'input tap {next_butt}')
+        # self.__device.shell(f'input tap {self.__config.get_coords("next4")}')
         time.sleep(2)
 
     def __set_password(self, password):
