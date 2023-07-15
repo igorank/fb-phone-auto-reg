@@ -37,9 +37,12 @@ def load_data() -> dict:
         surnames = get_filesdata('names\\surnames_lat.txt')
         gender = 0
     else:
-        names = get_filesdata('names\\names_m_lat.txt')
-        surnames = get_filesdata('names\\surnames_m_lat.txt')
-        gender = 1
+        names = get_filesdata('names\\names_lat.txt')
+        surnames = get_filesdata('names\\surnames_lat.txt')
+        gender = 0
+        # names = get_filesdata('names\\names_m_lat.txt')
+        # surnames = get_filesdata('names\\surnames_m_lat.txt')
+        # gender = 1
     emails = get_filesdata('emails.txt')
     return {'names': names, 'surnames': surnames,
             'gender': gender, 'emails': emails}
@@ -58,6 +61,8 @@ def get_email_data(random_email: str) -> tuple:
         case "rambler.ru":
             return email, 'imap.rambler.ru', \
                 rand_email.split(';')[1], rand_email.split(';')[1]
+        case "mail.com":
+            return email, 'imap.mail.com',
 
 
 def generate_password() -> str:
@@ -87,7 +92,7 @@ def get_fb_code(mail_obj, delay: int) -> (str or bool):
 
 def check_registration(comp_result: bool) -> (bool or str):
     if comp_result:  # default = 5
-        print('Success')
+        # print('Success')
 
         if email_data[1] == 'mail.inbox.lv' or email_data[1] == 'imap.rambler.ru':
             try:
@@ -192,7 +197,7 @@ if __name__ == '__main__':
                 res = fb.check_checkpoint(email_data)
                 ver_code = check_registration(res)
                 if ver_code:
-                    print(ver_code)
+                    # print(ver_code)
                     fb.input_code(ver_code)
                     check_verification()
 
