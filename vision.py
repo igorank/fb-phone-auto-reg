@@ -36,7 +36,8 @@ def get_coords(temp: str = "template.png") -> str:
     # loc = np.where (res >= threshold)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
 
-    return str(int(min_loc[0] + (w / 2))) + " " + str(int(min_loc[1] + (h / 2)))
+    # return str(int(min_loc[0] + (w / 2))) + " " + str(int(min_loc[1] + (h / 2)))
+    return str(int(min_loc[0] + (w / 2))) + " " + str(int(min_loc[1]))
 
 
 def is_template_in_image(img: str, templ: str):

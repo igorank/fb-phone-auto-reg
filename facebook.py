@@ -36,8 +36,8 @@ class Facebook:
         start = time.time()
         elapsed_time = 0
 
-        succ_reg_list = ['data\\succ_reg.png', 'data\\succ_reg2.png',
-                         'data\\succ_reg3.png', 'data\\succ_reg4.png', 'data\\succ_reg5.png']
+        succ_reg_list = ['data\\succ_reg.png', 'data\\succ_reg2.png', 'data\\succ_reg3.png'
+                         , 'data\\succ_reg4.png', 'data\\succ_reg5.png', 'data\\succ_reg6.png']
         fail_reg_list = ['data\\checkpoint.png']
 
         while elapsed_time <= timeout:
@@ -146,7 +146,7 @@ class Facebook:
             time.sleep(0.5)
 
     def resend_code(self):
-        codenotcome_butt = vision.get_coords("codedidntcome.png")   # заменить на корд.
+        codenotcome_butt = vision.get_coords("codedidntcome.png")  # заменить на корд.
         self.__device.shell(f'input tap {codenotcome_butt}')
         self.__device.shell(f'input tap {self.__config.get_coords("resend_code")}')
 
@@ -161,7 +161,7 @@ class Facebook:
         self.__device.shell(f'input tap {self.__config.get_coords("start")}')
         time.sleep(3)
 
-        self.__device.shell(f'input tap 300 675')   # TEMP
+        self.__device.shell(f'input tap 300 675')  # TEMP
         time.sleep(0.5)
         self.take_screenshot()
         if vision.compare_images('screencap.png', 'data\\whatsurname.png') < 5:
