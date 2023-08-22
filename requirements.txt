@@ -3,3 +3,4 @@ random-password-generator
 imap-tools
 pure-python-adb
 opencv-python
+python-telegram-bot

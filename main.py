@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import time
 import random
@@ -9,6 +10,7 @@ from password_generator import PasswordGenerator
 from facebook import Facebook
 from imapreader import EmailReader
 from outlook import Outlook
+from telegram_bot import TelegramBot
 from config import Config
 from helper import remove_line_by_text
 
@@ -61,8 +63,8 @@ def get_email_data(random_email: str) -> tuple:
         case "rambler.ru":
             return email, 'imap.rambler.ru', \
                 rand_email.split(';')[1], rand_email.split(';')[1]
-        case "mail.com":
-            return email, 'imap.mail.com',
+        # case "mail.com":
+        #     return email, 'imap.mail.com',
 
 
 def generate_password() -> str:
@@ -90,31 +92,29 @@ def get_fb_code(mail_obj, delay: int) -> (str or bool):
         return "Timeout"
 
 
-def check_registration(comp_result: bool) -> (bool or str):
-    if comp_result:  # default = 5
-        # print('Success')
+def check_registration() -> bool or str:
 
-        if email_data[1] == 'mail.inbox.lv' or email_data[1] == 'imap.rambler.ru':
-            try:
-                mail_obj = EmailReader(email_data[1], email_data[0], email_data[2])
-            except MailboxLoginError:   # Invalid login or password
-                print('Invalid login or password')
-                remove_line_by_text('emails.txt',
-                                    str(email_data[0]))  # удаляем почту из txt файла
-                return False
-        else:
-            mail_obj = Outlook()
-            mail_obj.login(email_data[0], email_data[2])
-            # if not mail_obj.login(email_data[0], email_data[2]):
-            #     remove_line_by_text('emails.txt',
-            #                         str(email_data[0]))  # удаляем почту из txt файла
-            #     print(email_data[0] + " has been banned")
-            #     return False
+    if email_data[1] == 'mail.inbox.lv' or email_data[1] == 'imap.rambler.ru':
+        try:
+            mail_obj = EmailReader(email_data[1], email_data[0], email_data[2])
+        except MailboxLoginError:  # Invalid login or password
+            # print('Login Error')
+            remove_line_by_text('emails.txt',
+                                str(email_data[0]))  # удаляем почту из txt файла
+            return False
+    else:
+        mail_obj = Outlook()
+        mail_obj.login(email_data[0], email_data[2])
+        # if not mail_obj.login(email_data[0], email_data[2]):
+        #     remove_line_by_text('emails.txt',
+        #                         str(email_data[0]))  # удаляем почту из txt файла
+        #     print(email_data[0] + " has been banned")
+        #     return False
 
-        for _ in range(10):
-            code = get_fb_code(mail_obj, 30)
-            if code:
-                return code
+    for _ in range(10):
+        code = get_fb_code(mail_obj, 30)
+        if code:
+            return code
 
 
 def compare(dest: list, source='screencap.png') -> bool:
@@ -136,14 +136,14 @@ def check_verification(timeout: int = 22) -> bool:
         fb.take_screenshot()
 
         if compare(succ_ver_list):
-            print('Profile verified')
+            # print('Profile verified')
             with open("accounts.txt", "a") as file:
                 file.write(str(email_data[0]) + ";" + str(password) + ";" + str(email_data[3]) + ";\n")
             remove_line_by_text('emails.txt',
                                 str(email_data[0]))  # удаляем почту из txt файла
             return True
         elif vision.compare_images('screencap.png', 'data\\not_verified.png') < 5:
-            print('Profile not verified')
+            # print('Profile not verified')
             remove_line_by_text('emails.txt',
                                 str(email_data[0]))  # удаляем почту из txt файла
             return False
@@ -184,22 +184,37 @@ if __name__ == '__main__':
         try:
             rand_email = random.choice(file_data['emails'])
         except IndexError:  # пустой emails.txt
-            sys.exit()
+            # sys.exit()
+            time.sleep(5)
+            continue
         password = generate_password()
 
         profile_data = {'name': name, 'surname': surname,
                         'password': password, 'gender': file_data['gender']}
         email_data = get_email_data(rand_email)
 
+        bot = TelegramBot()
+
         fb = Facebook(device)
         if fb.check_init():
             if fb.register(profile_data, email_data):
-                res = fb.check_checkpoint(email_data)
-                ver_code = check_registration(res)
-                if ver_code:
-                    # print(ver_code)
-                    fb.input_code(ver_code)
-                    check_verification()
+                if not fb.check_checkpoint(email_data):
+                    asyncio.get_event_loop().run_until_complete(bot.send_msg(False, email_data[0],
+                                                                             password, "Checkpoint"))
+                else:
+                    ver_code = check_registration()
+                    if ver_code:
+                        # print(ver_code)
+                        fb.input_code(ver_code)
+                        if check_verification():
+                            asyncio.get_event_loop().run_until_complete(bot.send_msg(True, email_data[0],
+                                                                                     password))
+                        else:
+                            asyncio.get_event_loop().run_until_complete(bot.send_msg(False, email_data[0],
+                                                                                     password, "Profile Not Verified"))
+                    else:
+                        asyncio.get_event_loop().run_until_complete(bot.send_msg(False, email_data[0],
+                                                                                 password, "Email Login Error"))
 
         fb.clear_cache()
         fb.change_ip()
