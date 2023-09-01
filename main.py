@@ -199,21 +199,21 @@ if __name__ == '__main__':
         if fb.check_init():
             if fb.register(profile_data, email_data):
                 if not fb.check_checkpoint(email_data):
-                    asyncio.get_event_loop().run_until_complete(bot.send_msg(False, email_data[0],
-                                                                             password, "Checkpoint"))
+                    asyncio.get_event_loop().run_until_complete(bot.send_msg(False, name, surname, email_data[0],
+                                                                             password))
                 else:
                     ver_code = check_registration()
                     if ver_code:
                         # print(ver_code)
                         fb.input_code(ver_code)
                         if check_verification():
-                            asyncio.get_event_loop().run_until_complete(bot.send_msg(True, email_data[0],
+                            asyncio.get_event_loop().run_until_complete(bot.send_msg(True, name, surname, email_data[0],
                                                                                      password))
                         else:
-                            asyncio.get_event_loop().run_until_complete(bot.send_msg(False, email_data[0],
+                            asyncio.get_event_loop().run_until_complete(bot.send_msg(False, name, surname, email_data[0],
                                                                                      password, "Profile Not Verified"))
                     else:
-                        asyncio.get_event_loop().run_until_complete(bot.send_msg(False, email_data[0],
+                        asyncio.get_event_loop().run_until_complete(bot.send_msg(False, name, surname, email_data[0],
                                                                                  password, "Email Login Error"))
 
         fb.clear_cache()
