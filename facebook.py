@@ -28,7 +28,6 @@ class Facebook:
             end = time.time()
             elapsed_time = end - start
             iterator += 1
-            # print(elapsed_time) # TEMP
 
         return False
 
@@ -51,7 +50,7 @@ class Facebook:
                 if vision.compare_images('screencap.png', i) < 5:
                     remove_line_by_text('emails.txt',
                                         str(email_data[0]))  # удаляем почту из txt файла
-                    print("Checkpoint")
+                    # print("Checkpoint")
                     return False
 
             end = time.time()
@@ -80,7 +79,7 @@ class Facebook:
                 # print("Birth date coordinates: " + birth_date_coords)  # TEMP
                 self.__device.shell(f'input tap {birth_date_coords}')
                 return True
-        print("Can not find birth date coordinates")
+        # print("Can not find birth date coordinates")
         return False
 
     def __fill_date(self) -> bool:
